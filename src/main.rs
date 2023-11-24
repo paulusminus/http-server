@@ -1,5 +1,4 @@
 use axum::Router;
-use std::net::SocketAddr;
 use tower_http::services::ServeDir;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -12,7 +11,7 @@ use shutdown::exit_on_signal_windows as exit_on_signal;
 #[cfg(unix)]
 use shutdown::exit_on_signal_unix as exit_on_signal;
 
-use crate::configuration::{compression, logging, PORT};
+use crate::configuration::{compression, logging, listen_address};
 
 #[tokio::main]
 async fn main() -> Result<(), axum::Error> {
@@ -23,7 +22,7 @@ async fn main() -> Result<(), axum::Error> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    serve(two_serve_dirs(), PORT).await
+    serve(two_serve_dirs()).await
 }
 
 fn two_serve_dirs() -> Router {
@@ -35,10 +34,8 @@ fn two_serve_dirs() -> Router {
         .nest_service("/lipl-book", serve_dir_from_dist)
 }
 
-async fn serve(app: Router, port: u16) -> Result<(), axum::Error> {
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
+async fn serve(app: Router) -> Result<(), axum::Error> {
+    axum::Server::bind(&listen_address())
         .serve(
             app.layer(logging())
                 .layer(compression())
