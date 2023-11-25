@@ -1,6 +1,9 @@
+use std::error::Error;
+
 use crate::configuration::{compression, listen_address, logging};
 use axum::Router;
 use configuration::Website;
+use tower_http::validate_request::ValidateRequestHeaderLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod configuration;
@@ -11,7 +14,7 @@ const USE_IPV6: bool = true;
 const WEBSITES: &[(&str, &str)] = &[("/", "paulmin-nl"), ("/lipl-book", "lipl-book"), ("/css", "picocss/pico-1.5.10/css")];
 
 #[tokio::main]
-async fn main() -> Result<(), axum::Error> {
+async fn main() -> Result<(), Box<dyn Error>> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
@@ -19,8 +22,10 @@ async fn main() -> Result<(), axum::Error> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let router = Website::new(WEBSITES).router();
-    serve(router, USE_IPV6, PORT).await
+    let lipl_router = lipl_storage_server::router_from_environment().await?.route_layer(ValidateRequestHeaderLayer::basic("paul", "CumGranoSalis"));
+    let router = Website::new(WEBSITES).router().merge(lipl_router);
+    serve(router, USE_IPV6, PORT).await?;
+    Ok(())
 }
 
 async fn serve(app: Router, use_ipv6: bool, port: u16) -> Result<(), axum::Error> {
