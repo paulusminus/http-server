@@ -1,17 +1,14 @@
+use crate::configuration::{compression, listen_address, logging};
 use axum::Router;
-use tower_http::services::ServeDir;
+use configuration::Website;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod configuration;
 mod shutdown;
 
-#[cfg(windows)]
-use shutdown::exit_on_signal_windows as exit_on_signal;
-
-#[cfg(unix)]
-use shutdown::exit_on_signal_unix as exit_on_signal;
-
-use crate::configuration::{compression, logging, listen_address};
+const PORT: u16 = 3060;
+const USE_IPV6: bool = true;
+const WEBSITES: &[(&str, &str)] = &[("/", "paulmin-nl"), ("/lipl-book", "lipl-book"), ("/css", "picocss/pico-1.5.10/css")];
 
 #[tokio::main]
 async fn main() -> Result<(), axum::Error> {
@@ -22,26 +19,18 @@ async fn main() -> Result<(), axum::Error> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    serve(two_serve_dirs()).await
+    let router = Website::new(WEBSITES).router();
+    serve(router, USE_IPV6, PORT).await
 }
 
-fn two_serve_dirs() -> Router {
-    let serve_dir_from_assets = ServeDir::new("paulmin-nl");
-    let serve_dir_from_dist = ServeDir::new("lipl-book");
-
-    Router::new()
-        .nest_service("/", serve_dir_from_assets)
-        .nest_service("/lipl-book", serve_dir_from_dist)
-}
-
-async fn serve(app: Router) -> Result<(), axum::Error> {
-    axum::Server::bind(&listen_address())
+async fn serve(app: Router, use_ipv6: bool, port: u16) -> Result<(), axum::Error> {
+    axum::Server::bind(&listen_address(use_ipv6, port))
         .serve(
             app.layer(logging())
                 .layer(compression())
                 .into_make_service(),
         )
-        .with_graceful_shutdown(exit_on_signal())
+        .with_graceful_shutdown(shutdown::exit_on_signal())
         .await
         .map_err(axum::Error::new)
 }

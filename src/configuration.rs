@@ -1,8 +1,10 @@
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 
+use axum::Router;
 use tower_http::{
     classify::{ServerErrorsAsFailures, SharedClassifier},
     compression::CompressionLayer,
+    services::ServeDir,
     trace::{
         DefaultMakeSpan, DefaultOnBodyChunk, DefaultOnEos, DefaultOnFailure, DefaultOnRequest,
         DefaultOnResponse, TraceLayer,
@@ -10,8 +12,24 @@ use tower_http::{
 };
 use tracing::Level;
 
-pub const PORT: u16 = 3001;
-pub const USE_IPV6: bool = true;
+pub struct Website<'a> {
+    serve_dirs: &'a [(&'static str, &'static str)],
+}
+
+impl<'a> Website<'a> {
+    pub fn new(serve_dirs: &'a [(&'static str, &'static str)]) -> Website<'a> {
+        Website { serve_dirs }
+    }
+
+    pub fn router(&self) -> Router {
+        let mut router = Router::new();
+        for (path, serve_dir) in self.serve_dirs {
+            let p = path;
+            router = router.nest_service(p, ServeDir::new(serve_dir));
+        }
+        router
+    }
+}
 
 #[inline]
 pub fn logging() -> TraceLayer<SharedClassifier<ServerErrorsAsFailures>> {
@@ -29,19 +47,18 @@ pub fn compression() -> CompressionLayer {
     CompressionLayer::new().br(true).gzip(true)
 }
 
-fn ipv6_listen_address() -> SocketAddr {
-    ([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], PORT).into()
+fn ipv6_all() -> IpAddr {
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].into()
 }
 
-fn ipv4_listen_address() -> SocketAddr {
-    ([0,0,0,0], PORT).into()
+fn ipv4_all() -> IpAddr {
+    [0, 0, 0, 0].into()
 }
 
-pub fn listen_address() -> SocketAddr {
-    if USE_IPV6 {
-        ipv6_listen_address()
-    }
-    else {
-        ipv4_listen_address()
+pub fn listen_address(use_ipv6: bool, port: u16) -> SocketAddr {
+    if use_ipv6 {
+        (ipv6_all(), port).into()
+    } else {
+        (ipv4_all(), port).into()
     }
 }

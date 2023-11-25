@@ -1,5 +1,6 @@
 use tokio::signal::unix::{signal, SignalKind};
 
+#[cfg(windows)]
 #[allow(dead_code)]
 #[inline]
 pub async fn exit_on_signal_windows() {
@@ -13,8 +14,9 @@ pub async fn exit_on_signal_windows() {
     };
 }
 
+#[cfg(unix)]
 #[inline]
-pub async fn exit_on_signal_unix() {
+pub async fn exit_on_signal() {
     let mut wait_on_term_stream = signal(SignalKind::terminate()).unwrap();
     let mut wait_on_term_int = signal(SignalKind::interrupt()).unwrap();
 
@@ -41,6 +43,7 @@ mod message {
         tracing::info!("Exiting on recieved signal SIGTERM");
     }
 
+    #[allow(dead_code)]
     pub fn error_on_receiving_signal<E: std::error::Error>(error: E) {
         tracing::error!("Error {error} receiving signal");
     }
