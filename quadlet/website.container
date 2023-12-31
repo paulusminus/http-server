@@ -4,9 +4,9 @@ After=network-online.target
 After=local-fs.target
 
 [Container]
-Image=paulmin.nl/website
+Image=docker.io/paulusminus/http-serve
 PublishPort=3001:3001
-AutoUpdate=local
+AutoUpdate=registry
 
 [Install]
 WantedBy=default.target
