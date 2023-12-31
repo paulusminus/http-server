@@ -24,7 +24,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let port = std::env::var("PORT")?.parse::<u16>()?;
     let www_root = std::env::var("WWW_ROOT")?;
 
-    let router = Router::new().route("/", get_service(ServeDir::new(www_root)));
+
+    let files_service = ServeDir::new(www_root);
+    let router = Router::new().fallback_service(get_service(files_service));
     let listener = TcpListener::bind(listen_address(USE_IPV6, port))
         .await
         .map_err(axum::Error::new)?;
