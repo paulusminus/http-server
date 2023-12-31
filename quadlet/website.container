@@ -4,7 +4,7 @@ After=network-online.target
 After=local-fs.target
 
 [Container]
-Image=docker.io/paulusminus/http-serve
+Image=docker.io/paulusminus/http-server
 PublishPort=3001:3001
 AutoUpdate=registry
 
