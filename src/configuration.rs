@@ -9,7 +9,6 @@ use tower_http::{
 };
 use tracing::Level;
 
-
 #[inline]
 pub fn logging() -> TraceLayer<SharedClassifier<ServerErrorsAsFailures>> {
     TraceLayer::new_for_http()
@@ -41,4 +40,3 @@ pub fn listen_address(use_ipv6: bool, port: u16) -> SocketAddr {
         (ipv4_all(), port).into()
     }
 }
-

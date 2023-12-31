@@ -55,7 +55,7 @@ jobs:
           labels: |
             org.opencontainers.image.description=Serving static files
             org.opencontainers.image.authors=Paul Min
-            org.opencontainers.image.source=https://github.com/paulusminus/lipl-storage
+            org.opencontainers.image.source=https://github.com/paulusminus/http-server
             org.opencontainers.image.licenses=MIT
           tags: |
             type=semver,pattern={{ version }}

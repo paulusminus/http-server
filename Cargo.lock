@@ -357,7 +357,7 @@ checksum = "3ce4ef31cda248bbdb6e6820603b82dfcd9e833db65a43e997a0ccec777d11fe"
 
 [[package]]
 name = "http-server"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "axum",
  "tokio",
