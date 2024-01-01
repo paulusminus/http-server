@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::configuration::{compression, listen_address, logging};
-use axum::{Router, routing::get_service};
+use axum::{routing::get_service, Router};
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -24,7 +24,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let port = std::env::var("PORT")?.parse::<u16>()?;
     let www_root = std::env::var("WWW_ROOT")?;
 
-
     let files_service = ServeDir::new(www_root);
     let router = Router::new().fallback_service(get_service(files_service));
     let listener = TcpListener::bind(listen_address(USE_IPV6, port))
@@ -32,7 +31,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .map_err(axum::Error::new)?;
     axum::serve(
         listener,
-        router.layer(logging())
+        router
+            .layer(logging())
             .layer(compression())
             .into_make_service(),
     )
@@ -40,4 +40,3 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .await?;
     Ok(())
 }
-
