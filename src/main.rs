@@ -1,42 +1,59 @@
 use crate::configuration::{compression, listen_address, logging};
-use axum::Router;
 use std::error::Error;
-use tokio::net::TcpListener;
+use hyper_util::{rt::{TokioExecutor, TokioIo}, server::conn::auto::Builder, service::TowerToHyperService};
 use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{fmt, layer::SubscriberExt, registry, util::SubscriberInitExt, EnvFilter};
+use tokio::{net::TcpListener, task::JoinSet};
 
 mod configuration;
-mod shutdown;
+// mod shutdown;
 
 const USE_IPV6: bool = true;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    registry()
-        .with(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
-                .from_env_lossy(),
-        )
-        .with(fmt::layer())
-        .init();
+    tracing_subscriber::fmt::init();
 
     let port = std::env::var("PORT")?.parse::<u16>()?;
     let www_root = std::env::var("WWW_ROOT")?;
 
-    let service = ServiceBuilder::new()
-        .layer(compression())
-        .layer(logging())
-        .service(ServeDir::new(www_root));
+    let tower_service = ServiceBuilder::new()
+    .layer(compression())
+    .layer(logging())
+    .service(ServeDir::new(www_root));
 
-    let router = Router::new().fallback_service(service);
-    let listener = TcpListener::bind(listen_address(USE_IPV6, port))
-        .await
-        .map_err(axum::Error::new)?;
-    axum::serve(listener, router)
-        .with_graceful_shutdown(shutdown::exit_on_signal())
-        .await?;
-    Ok(())
+    let hyper_service = TowerToHyperService::new(tower_service);
+
+    let listen_addr = listen_address(USE_IPV6, port);
+    let tcp_listener = TcpListener::bind(&listen_addr).await?;
+    println!("listening on http://{}", &listen_addr);
+
+    let mut join_set = JoinSet::new();
+    loop {
+        let (stream, addr) = match tcp_listener.accept().await {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!("failed to accept connection: {e}");
+                continue;
+            }
+        };
+
+        let service = hyper_service.clone();
+        let serve_connection = async move {
+            println!("handling a request from {addr}");
+
+            let result = Builder::new(TokioExecutor::new())
+                .serve_connection(TokioIo::new(stream), service)
+                .await;
+
+            if let Err(e) = result {
+                eprintln!("error serving {addr}: {e}");
+            }
+
+            println!("handled a request from {addr}");
+        };
+
+        join_set.spawn(serve_connection);
+    }
+
 }
