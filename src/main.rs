@@ -1,9 +1,13 @@
 use crate::configuration::{compression, listen_address, logging};
+use hyper_util::{
+    rt::{TokioExecutor, TokioIo},
+    server::conn::auto::Builder,
+    service::TowerToHyperService,
+};
 use std::error::Error;
-use hyper_util::{rt::{TokioExecutor, TokioIo}, server::conn::auto::Builder, service::TowerToHyperService};
+use tokio::{net::TcpListener, task::JoinSet};
 use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
-use tokio::{net::TcpListener, task::JoinSet};
 
 mod configuration;
 // mod shutdown;
@@ -18,9 +22,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let www_root = std::env::var("WWW_ROOT")?;
 
     let tower_service = ServiceBuilder::new()
-    .layer(compression())
-    .layer(logging())
-    .service(ServeDir::new(www_root));
+        .layer(compression())
+        .layer(logging())
+        .service(ServeDir::new(www_root));
 
     let hyper_service = TowerToHyperService::new(tower_service);
 
@@ -55,5 +59,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         join_set.spawn(serve_connection);
     }
-
 }
