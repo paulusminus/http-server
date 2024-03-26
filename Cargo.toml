@@ -1,5 +1,5 @@
 [package]
-name = "http-server"
+name = "http-server-without-axum"
 description = "Serving files through http"
 version = "0.1.3"
 edition = "2021"
