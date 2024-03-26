@@ -21,7 +21,10 @@ use tower_http::{
 };
 use tracing::{error, info};
 
-use crate::{configuration::{compression, listen_address, logging}, shutdown::exit_on_signal};
+use crate::{
+    configuration::{compression, listen_address, logging},
+    shutdown::exit_on_signal,
+};
 
 mod configuration;
 mod shutdown;
