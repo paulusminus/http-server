@@ -65,8 +65,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-
-    Ok(
-        join_set.shutdown().await
-    )
+    join_set.shutdown().await;
+    Ok(())
 }
